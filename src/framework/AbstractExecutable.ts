@@ -1,4 +1,4 @@
-import * as pathlib from 'path';
+import path, * as pathlib from 'path';
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import { EOL } from 'os';
@@ -599,10 +599,9 @@ export abstract class AbstractExecutable<TestT extends AbstractTest = AbstractTe
     const execEnvs = this.shared.options.customEnv;
     const pathForExecution = await this._getPathForExecution();
     const wp = this.shared.workspacePath + '/';
-    const pathForExecutionRelative = pathForExecution.startsWith(wp)
-      ? pathForExecution.substring(wp.length)
-      : pathForExecution;
-    // TODO: win32
+    const pathForExecutionRelative = path.normalize(
+      pathForExecution.startsWith(wp) ? pathForExecution.substring(wp.length) : pathForExecution,
+    );
     // TODO: spawner
     return (
       Object.entries(execEnvs)
@@ -612,7 +611,7 @@ export abstract class AbstractExecutable<TestT extends AbstractTest = AbstractTe
       pathForExecutionRelative.replaceAll("'", `'"'"'`) +
       "' " +
       execParams.map(x => `'${x.replaceAll("'", `'"'"'`)}'`).join(' ')
-    );
+    ).trim();
   }
 
   protected abstract _handleProcess(testRun: vscode.TestRun, runInfo: RunningExecutable): Promise<HandleProcessResult>;
