@@ -552,6 +552,14 @@ export class WorkspaceManager implements vscode.Disposable {
           rule: (): Record<string, string> =>
             Object.assign({}, executable.shared.resolvedSourceFileMap, debugConfigData.launchSourceFileMap),
         },
+        {
+          resolve: '${sourceFile}',
+          rule: test.file ?? '',
+        },
+        {
+          resolve: '${sourceFileLine}',
+          rule: test.line ?? '',
+        },
         createPythonIndexerForArray('parentLabel', parentLabel, '▸'),
       ];
 
