@@ -563,6 +563,8 @@
                             "${cwd}",
                             "${envObj}",
                             "${envObjArray}",
+                            "${sourceFile}",
+                            "${sourceFileLine}",
                             "${sourceFileMapObj}",
                             "${label}",
                             "${parentLabel}"
