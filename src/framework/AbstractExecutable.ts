@@ -603,15 +603,27 @@ export abstract class AbstractExecutable<TestT extends AbstractTest = AbstractTe
       pathForExecution.startsWith(wp) ? pathForExecution.substring(wp.length) : pathForExecution,
     );
     // TODO: spawner
-    return (
-      Object.entries(execEnvs)
-        .map(kv => `${kv[0]}='${(kv[1] ?? '').replaceAll("'", `'"'"'`)}'`)
-        .join(' ') +
-      " '" +
-      pathForExecutionRelative.replaceAll("'", `'"'"'`) +
-      "' " +
-      execParams.map(x => `'${x.replaceAll("'", `'"'"'`)}'`).join(' ')
-    ).trim();
+    if (process.platform === 'win32') {
+      return (
+        Object.entries(execEnvs)
+          .map(kv => `${kv[0]}='${(kv[1] ?? '').replaceAll('"', '""')}'`)
+          .join(' ') +
+        " '" +
+        pathForExecutionRelative.replaceAll('"', '""') +
+        "' " +
+        execParams.map(x => `'${x.replaceAll('"', '""')}'`).join(' ')
+      ).trim();
+    } else {
+      return (
+        Object.entries(execEnvs)
+          .map(kv => `${kv[0]}='${(kv[1] ?? '').replaceAll("'", `'"'"'`)}'`)
+          .join(' ') +
+        " '" +
+        pathForExecutionRelative.replaceAll("'", `'"'"'`) +
+        "' " +
+        execParams.map(x => `'${x.replaceAll("'", `'"'"'`)}'`).join(' ')
+      ).trim();
+    }
   }
 
   protected abstract _handleProcess(testRun: vscode.TestRun, runInfo: RunningExecutable): Promise<HandleProcessResult>;
