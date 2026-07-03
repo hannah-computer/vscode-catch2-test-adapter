@@ -458,7 +458,7 @@ export class WorkspaceManager implements vscode.Disposable {
   }
 
   debug(test: AbstractTest, run: vscode.TestRun, setDebugArgs: (exec: string, args: string[]) => void): Promise<void> {
-    run.enqueued(test.item);
+    // run.enqueued(test.item); otherwise the state would be skipped
 
     return this._debugInner(test, run, setDebugArgs).catch(e => {
       this.log.errorS('error during debug', e);
@@ -592,7 +592,7 @@ export class WorkspaceManager implements vscode.Disposable {
 
       this._shared.log.info('startDebugging');
 
-      run.started(test.item);
+      // run.started(test.item); otherwise the state would be skipped
 
       const debugSessionStarted = await vscode.debug.startDebugging(this.workspaceFolder, debugConfig, {
         testRun: run,

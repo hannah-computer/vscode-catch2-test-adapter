@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- preserve state of test after debugging. ([related](https://github.com/matepek/vscode-catch2-test-adapter/issues/532))
+
 ## [4.25.4] - 2026-06-26
 
 Improved file resolver: async.
