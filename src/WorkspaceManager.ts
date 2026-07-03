@@ -527,7 +527,7 @@ export class WorkspaceManager implements vscode.Disposable {
       const varToResolve: ResolveRuleAsync[] = [
         ...executable.shared.varToValue,
         { resolve: '${label}', rule: test.label },
-        { resolve: '${exec}', rule: executable.shared.path },
+        createPythonIndexerForPathVariable('exec', executable.shared.path),
         { resolve: '${args}', rule: argsArrayFunc }, // deprecated
         { resolve: '${argsArray}', rule: argsArrayFunc },
         { resolve: '${argsArrayFlat}', rule: argsArrayFunc, isFlat: true },

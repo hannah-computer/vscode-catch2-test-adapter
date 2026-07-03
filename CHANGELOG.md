@@ -6,9 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [4.26.0]
+
 ### Added
 
-- debug config variables: `${sourceFile}`, `${sourceFileLine}`
+- debug config variables: `${sourceFile}`, `${sourceFileLine}` and updated: `${exec}` to support indexing
 
 ### Changed
 
