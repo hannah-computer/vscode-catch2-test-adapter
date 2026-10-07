@@ -226,8 +226,23 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
     if (result === 'OK') {
       if (!this.data) throw Error('assert:data');
 
-      // fs.exists
-      this.data.argsProfrawsFile.writeFile(builder.env[ENV_LLVM_PROFILE_FILE]! + '\n');
+      // %p resolves to the PID(s) at runtime, discover the actual files
+      const template = builder.env[ENV_LLVM_PROFILE_FILE]!;
+      const dir = pathlib.dirname(template);
+      const pattern = pathlib.basename(template).replace('%p', '*');
+      let profrawFiles: string[] = [];
+      try {
+        const uris = await vscode.workspace.findFiles(new vscode.RelativePattern(dir, pattern));
+        profrawFiles = uris.map(u => u.fsPath);
+      } catch (e) {
+        this.log.error('Failed to list profraw files for', template, e);
+      }
+      if (profrawFiles.length === 0) {
+        this.log.warn('No profraw file was produced for', builder.cmd);
+      }
+      for (const p of profrawFiles) {
+        await this.data.argsProfrawsFile.writeFile(p + '\n');
+      }
 
       if (this.data.argsObjectsFileFirst) {
         this.data.argsObjectsFileFirst = false;
@@ -254,10 +269,26 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
     const mergedProfdataPath = pathlib.join(this.data.tmpDir.path, 'merged.profdata');
     await this.data.argsProfrawsFile.close().catch(e => this.log.error('closing file', e));
     // Use LLVM Response files to bypass OS ARG_MAX limits for profdata
-    const mergeArgs = ['merge', '-sparse', `@${this.data.argsProfrawsPath}`, '-o', mergedProfdataPath];
+    const mergeArgs = [
+      'merge',
+      '-sparse',
+      // don't abort the whole merge if one profraw is truncated (e.g. a killed death-test child)
+      '--failure-mode=all',
+      `@${this.data.argsProfrawsPath}`,
+      '-o',
+      mergedProfdataPath,
+    ];
     try {
       this.log.debug('llvm-profdata', mergeArgs);
-      await executeWithPlatformToolchain('llvm-profdata', mergeArgs, this.data.tmpDir.path, this.testRun.token);
+      const [, mergeStderr] = await executeWithPlatformToolchain(
+        'llvm-profdata',
+        mergeArgs,
+        this.data.tmpDir.path,
+        this.testRun.token,
+      );
+      // with '--failure-mode=all', a bad/truncated input is a warning here rather than a thrown
+      // error, so it has to be surfaced explicitly or it's otherwise invisible.
+      if (mergeStderr.trim()) this.log.warn('llvm-profdata warnings:', mergeStderr.trim());
     } catch (e) {
       this.log.error('Failed to merge profdata. Ensure llvm-profdata is in PATH.', e);
       return;
@@ -358,7 +389,8 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
     // Relates:
     // - `testMate.cpp.test.parallelExecutionOfExecutableLimit` > 1
     // - `allowExecutableConcurrentInvocations`
-    const profrawPath = pathlib.join(this.data.tmpDir.path, crypto.randomBytes(16).toString('hex') + '.profraw');
+    // LLVM profiling runtime replaces %p with the PID, avoiding forked children clobbering it
+    const profrawPath = pathlib.join(this.data.tmpDir.path, crypto.randomBytes(16).toString('hex') + '.%p.profraw');
     return {
       ...builder,
       env: { ...builder.env, [ENV_LLVM_PROFILE_FILE]: profrawPath },
