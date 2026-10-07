@@ -322,6 +322,8 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
       '-instr-profile',
       mergedProfdataPath,
       '-format=text',
+      // macro-expansion regions aren't read anywhere in this extension - free to always skip.
+      '-skip-expansions',
     ];
     let dataArr;
     try {
