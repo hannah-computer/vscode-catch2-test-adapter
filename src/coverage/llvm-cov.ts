@@ -291,12 +291,15 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
     let dataArr;
     try {
       this.log.debug('llvm-cov', exportArgs);
-      const [outputStr] = await executeWithPlatformToolchain(
+      const [outputStr, exportStderr] = await executeWithPlatformToolchain(
         'llvm-cov',
         exportArgs,
         this.data.tmpDir.path,
         this.testRun.token,
       );
+      // e.g. "profile data may be out of date" for a stale object vs. a rebuilt binary - exactly
+      // the kind of thing a user needs to see when coverage looks wrong or stale.
+      if (exportStderr.trim()) this.log.warn('llvm-cov warnings:', exportStderr.trim());
       try {
         const coverageJson = JSON.parse(outputStr);
         const covType = coverageJson['type'] as string;
