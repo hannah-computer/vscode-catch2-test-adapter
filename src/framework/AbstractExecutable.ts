@@ -850,7 +850,7 @@ export abstract class AbstractExecutable<TestT extends AbstractTest = AbstractTe
 
     data.testRun.appendOutput(runInfo.getProcStartLine());
 
-    this.shared.log.info('proc started', runInfo.process.pid, pathForExecution, this.shared, execParams);
+    this.shared.log.info('proc started', runInfo.process.pid, pathForExecution, builder.options, execParams);
 
     runInfo.setPriorityAsync(this.shared.log);
 
@@ -965,7 +965,7 @@ export abstract class AbstractExecutable<TestT extends AbstractTest = AbstractTe
         try {
           await data.testRunHandler.endProcess(builderProps, result.value);
         } catch (e) {
-          this.shared.log.error('profileRunHandler.endProcess.beginProcess', e);
+          this.shared.log.error('profileRunHandler.endProcess', e);
         }
       }
     } catch (e) {
