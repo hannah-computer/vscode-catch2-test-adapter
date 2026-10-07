@@ -79,7 +79,7 @@
     "@types/sinon": "^21.0.1",
     "@types/source-map-support": "^0.5.10",
     "@types/vscode": "1.92.0",
-    "@vscode/test-electron": "^2.5.2",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.2",
     "bent": "^7.3.12",
     "deep-equal": "^2.2.3",
