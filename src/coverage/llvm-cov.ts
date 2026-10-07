@@ -184,9 +184,11 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
     // these configs don't need reload, will be applied for future runs
     const config = vscode.workspace.getConfiguration(configSection);
     this.allowExecutableConcurrentInvocations = config.get<boolean>('allowExecutableConcurrentInvocations', true);
+    this.objectsPattern = config.get<string[]>('objects', ['**/*.{dylib,so,dll}']);
   }
 
   allowExecutableConcurrentInvocations: boolean;
+  private readonly objectsPattern: string[];
   private data: TestRunData | undefined = undefined;
 
   async init(): Promise<void> {
@@ -262,14 +264,16 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
     }
 
     progress.report({ message: 'collecting object files' });
-    const objectsPattern = vscode.workspace
-      .getConfiguration(configSection)
-      .get<string[]>('objects', ['**/*.{dylib,so,dll}']);
     try {
-      for (const pattern of objectsPattern) {
+      for (const pattern of this.objectsPattern) {
+        // `null` here (not a string) is required to bypass VS Code's `files.exclude`: a string
+        // exclude is applied in ADDITION to it, not instead of it, so files hidden from the
+        // Explorer (very commonly build/output dirs in C++ workspaces) would otherwise never be
+        // found at all - which is exactly the kind of silent coverage gap this glob exists to
+        // avoid.
         const sharedLibs = await vscode.workspace.findFiles(
           new vscode.RelativePattern(this.workspaceFolder, pattern),
-          '**/{node_modules,_deps}/**',
+          null,
         );
         for (const l of sharedLibs) {
           if (this.data.argsObjectsFileFirst) throw Error('assert argsObjectsFileFirst');
