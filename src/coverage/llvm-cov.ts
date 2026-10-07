@@ -185,10 +185,12 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
     const config = vscode.workspace.getConfiguration(configSection);
     this.allowExecutableConcurrentInvocations = config.get<boolean>('allowExecutableConcurrentInvocations', true);
     this.objectsPattern = config.get<string[]>('objects', ['**/*.{dylib,so,dll}']);
+    this.extraExportArgs = config.get<string[]>('exportArgs', []);
   }
 
   allowExecutableConcurrentInvocations: boolean;
   private readonly objectsPattern: string[];
+  private readonly extraExportArgs: string[];
   private data: TestRunData | undefined = undefined;
 
   async init(): Promise<void> {
@@ -324,6 +326,9 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
       '-format=text',
       // macro-expansion regions aren't read anywhere in this extension - free to always skip.
       '-skip-expansions',
+      // user-supplied, e.g. `-skip-functions` on a codebase whose export would otherwise be too
+      // large (see `exportArgs` markdownDescription)
+      ...this.extraExportArgs,
     ];
     let dataArr;
     try {

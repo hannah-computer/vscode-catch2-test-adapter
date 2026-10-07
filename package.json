@@ -2376,6 +2376,14 @@
                 "type": "string"
               },
               "default": ["**/*.{dylib,so,dll}"]
+            },
+            "exportArgs": {
+              "markdownDescription": "Extra arguments appended to the `llvm-cov export` invocation. For example, `-skip-functions` drops per-function coverage details (`DeclarationCoverage` markers) - useful on a codebase with a large header closure, where that data can make the export large enough to exceed Node's maximum string length and make coverage fail to appear at all. Line/branch coverage is unaffected either way. See `llvm-cov export -help` for other options.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": []
             }
           },
           "additionalProperties": false
