@@ -37,6 +37,16 @@ export interface TestMateTestRun {
    * associated with the test run.
    */
   onDidDispose: vscode.Event<void>;
+
+  /**
+   * Indicates a test has errored. You should pass one or more
+   * {@link vscode.TestMessage TestMessages} to describe the failure. This differs
+   * from the "failed" state in that it indicates a test that couldn't be
+   * executed at all, from a compilation error for example.
+   * @param test Test item to update.
+   * @param message Messages associated with the test failure.
+   */
+  errored(test: vscode.TestItem, message: vscode.TestMessage | readonly vscode.TestMessage[]): void;
 }
 
 ///
@@ -78,10 +88,13 @@ export interface TestMateTestRunHandler {
    * Called after the executable's process is spawned.
    * Use `testRun.token` !!!
    * @param builder if {@linkcode mapTestRunProcessBuilder} is defined the the its result value
+   * @param tests List of the tests were run in this process
    */
   endProcess?: (
     builder: TestMateProcessBuilder,
     result: 'OK' | 'CancelledByUser' | 'TimeoutByUser' | 'Errored',
+    tests: readonly vscode.TestItem[],
+    process: { pid?: number },
   ) => void | Promise<void>;
 
   /**
