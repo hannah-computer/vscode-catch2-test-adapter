@@ -5,7 +5,7 @@ import pathlib from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import { Log } from 'vscode-test-adapter-util';
-import { create_advanced_activate, executeWithPlatformToolchain } from './common';
+import { create_advanced_activate, executeWithPlatformToolchain, markAsErroredFromError } from './common';
 
 const testMateExtensionId = 'matepek.vscode-catch2-test-adapter';
 const configSection = 'testMate.cpp.experimental.llvm-cov';
@@ -192,6 +192,11 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
   private readonly objectsPattern: string[];
   private readonly extraExportArgs: string[];
   private data: TestRunData | undefined = undefined;
+  private readonly tests: ReadonlyArray<vscode.TestItem>[] = [];
+
+  private markAllTestsAsErrored(message: string, error: Error): void {
+    markAsErroredFromError(this.testRun, this.tests, message, this.log, error);
+  }
 
   async init(): Promise<void> {
     const tmpDirPath = await fs.mkdtemp(pathlib.join(os.tmpdir(), 'llvm-cov_'));
@@ -224,9 +229,12 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
   async endProcess(
     builder: TMA.TestMateProcessBuilder,
     result: 'OK' | 'CancelledByUser' | 'TimeoutByUser' | 'Errored',
+    tests: readonly vscode.TestItem[],
+    _process: { pid?: number },
   ): Promise<void> {
     if (result === 'OK') {
       if (!this.data) throw Error('assert:data');
+      this.tests.push(tests);
 
       // %p resolves to the PID(s) at runtime, discover the actual files
       const template = builder.env[ENV_LLVM_PROFILE_FILE]!;
@@ -269,7 +277,9 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
 
     progress.report({ message: 'llvm-profdata' });
     const mergedProfdataPath = pathlib.join(this.data.tmpDir.path, 'merged.profdata');
-    await this.data.argsProfrawsFile.close().catch(e => this.log.error('closing file', e));
+    await this.data.argsProfrawsFile.close().catch(e => {
+      this.markAllTestsAsErrored('Error while closing file', e);
+    });
     // Use LLVM Response files to bypass OS ARG_MAX limits for profdata
     const mergeArgs = [
       'merge',
@@ -292,7 +302,7 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
       // error, so it has to be surfaced explicitly or it's otherwise invisible.
       if (mergeStderr.trim()) this.log.warn('llvm-profdata warnings:', mergeStderr.trim());
     } catch (e) {
-      this.log.error('Failed to merge profdata. Ensure llvm-profdata is in PATH.', e);
+      this.markAllTestsAsErrored('Failed to merge profdata. Ensure llvm-profdata is in PATH.', e);
       return;
     }
 
@@ -314,7 +324,9 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
         }
       }
     } finally {
-      await this.data.argsObjectsFile.close().catch(e => this.log.error('closing file', e));
+      await this.data.argsObjectsFile.close().catch(e => {
+        this.markAllTestsAsErrored('Error while closing file', e);
+      });
     }
 
     progress.report({ message: 'llvm-cov' });
@@ -351,11 +363,11 @@ class LlvmCovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
         if (!Array.isArray(coverageJson['data'])) throw Error(`assert: data json array`);
         else dataArr = coverageJson['data'];
       } catch (e) {
-        this.log.error('Failed to parse coverage JSON:', e);
+        this.markAllTestsAsErrored('Failed to parse coverage JSON', e);
         return;
       }
     } catch (e) {
-      this.log.error('Failed to export coverage. Ensure llvm-cov is in PATH.', e);
+      this.markAllTestsAsErrored('Failed to export coverage. Ensure llvm-cov is in PATH.', e);
       return;
     }
 

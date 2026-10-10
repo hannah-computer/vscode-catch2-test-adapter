@@ -870,7 +870,7 @@ export abstract class AbstractExecutable<TestT extends AbstractTest = AbstractTe
         trigger('closed');
       });
 
-      const shedule = async (): Promise<void> => {
+      const schedule = async (): Promise<void> => {
         const cause_1 = await new Promise<'reschedule' | 'closed' | 'timeout'>(resolve => {
           trigger = resolve;
 
@@ -886,13 +886,13 @@ export abstract class AbstractExecutable<TestT extends AbstractTest = AbstractTe
           runInfo.killProcess(this.shared.execRunningTimeout);
           return Promise.resolve();
         } else if (cause_1 === 'reschedule') {
-          return shedule();
+          return schedule();
         } else {
           throw new Error('unknown case: ' + cause_1);
         }
       };
 
-      shedule().finally(() => {
+      schedule().finally(() => {
         changeConn.dispose();
       });
     }
@@ -963,7 +963,12 @@ export abstract class AbstractExecutable<TestT extends AbstractTest = AbstractTe
 
       if (data.testRunHandler?.endProcess) {
         try {
-          await data.testRunHandler.endProcess(builderProps, result.value);
+          await data.testRunHandler.endProcess(
+            builderProps,
+            result.value,
+            [...unexpectedTests.map(x => x.item), ...expectedToRunAndFoundTests.map(x => x.item)],
+            runInfo.process,
+          );
         } catch (e) {
           this.shared.log.error('profileRunHandler.endProcess', e);
         }

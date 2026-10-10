@@ -6,7 +6,7 @@ import os from 'node:os';
 import zlib from 'node:zlib';
 import { promisify } from 'node:util';
 import { Log } from 'vscode-test-adapter-util';
-import { create_advanced_activate, execute } from './common';
+import { create_advanced_activate, execute, markAsErroredFromError } from './common';
 
 const gunzip = promisify(zlib.gunzip);
 
@@ -150,6 +150,11 @@ class GcovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
         dispose: () => void;
       }
     | undefined = undefined;
+  private readonly tests: ReadonlyArray<vscode.TestItem>[] = [];
+
+  private markAllTestsAsErrored(message: string, ...args: unknown[]): void {
+    markAsErroredFromError(this.testRun, this.tests, message, this.log, ...args);
+  }
 
   async getGcdaPath() {
     return await vscode.workspace.findFiles(
@@ -160,7 +165,13 @@ class GcovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
 
   async cleanupGcda() {
     const gcdaFiles = await this.getGcdaPath();
-    await Promise.all(gcdaFiles.map(f => fs.unlink(f.fsPath).catch(e => this.log.error('unlink', e, f.fsPath))));
+    await Promise.all(
+      gcdaFiles.map(f =>
+        fs.unlink(f.fsPath).catch(e => {
+          this.markAllTestsAsErrored('unlink', e, f.fsPath);
+        }),
+      ),
+    );
   }
 
   async init(): Promise<void> {
@@ -179,6 +190,18 @@ class GcovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
     await this.cleanupGcda();
   }
 
+  async endProcess(
+    _builder: TMA.TestMateProcessBuilder,
+    result: 'OK' | 'CancelledByUser' | 'TimeoutByUser' | 'Errored',
+    tests: readonly vscode.TestItem[],
+    _process: { pid?: number },
+  ): Promise<void> {
+    if (result === 'OK') {
+      if (!this.data) throw Error('assert:data');
+      this.tests.push(tests);
+    }
+  }
+
   async finalise(progress: vscode.Progress<{ message?: string; increment?: number }>): Promise<void> {
     if (!this.data) throw new Error('assert:data');
     try {
@@ -186,7 +209,7 @@ class GcovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
         await this.finaliseInner(progress);
       }
     } catch (e) {
-      this.log.error('gcov.finalise:', e);
+      this.markAllTestsAsErrored('gcov.finalise:', e);
     } finally {
       await this.data.dispose();
       await this.cleanupGcda();
@@ -222,7 +245,7 @@ class GcovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
           this.testRun.token,
         );
       } catch (e) {
-        this.log.error(`Failed to execute gcov on ${file.fsPath}`, e);
+        this.markAllTestsAsErrored(`Failed to execute gcov on ${file.fsPath}`, e);
       }
     }
 
@@ -241,7 +264,7 @@ class GcovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
         const buffer = await fs.readFile(filePath);
         jsonStr = (await gunzip(buffer)).toString('utf8');
       } catch (e) {
-        this.log.error(`Failed to decompress ${gzFile}`, e);
+        this.markAllTestsAsErrored(`Failed to decompress ${gzFile}`, e);
         return;
       }
 
@@ -249,7 +272,7 @@ class GcovTestMateTestRunHandler implements TMA.TestMateTestRunHandler {
       try {
         coverageJson = JSON.parse(jsonStr);
       } catch (e) {
-        this.log.error(`Failed to parse JSON from ${gzFile}`, e);
+        this.markAllTestsAsErrored(`Failed to parse JSON from ${gzFile}`, e);
         return;
       }
 

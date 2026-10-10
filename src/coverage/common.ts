@@ -129,3 +129,30 @@ export const create_advanced_activate =
       log.info('missing extension', testMateExtensionId);
     }
   };
+
+/**
+ * Indicates a test has errored. You should pass one or more
+ * {@link vscode.TestMessage TestMessages} to describe the failure. This differs
+ * from the "failed" state in that it indicates a test that couldn't be
+ * executed at all, from a compilation error for example.
+ * @param tests Test items to update.
+ * @param message Messages associated with the test failure.
+ */
+export const markAsErrored = (
+  testRun: TMA.TestMateTestRun,
+  tests: ReadonlyArray<vscode.TestItem>[],
+  message: vscode.TestMessage | readonly vscode.TestMessage[],
+) => {
+  for (const a of tests) for (const item of a) testRun.errored(item, message);
+};
+
+export const markAsErroredFromError = (
+  testRun: TMA.TestMateTestRun,
+  tests: ReadonlyArray<vscode.TestItem>[],
+  message: string,
+  log: Log,
+  ...args: unknown[]
+) => {
+  log.error(message, ...args);
+  markAsErrored(testRun, tests, new vscode.TestMessage(message + ' (See logs)'));
+};

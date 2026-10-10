@@ -37,5 +37,6 @@
     {
       "pattern": "test/cpp/build/**/*.exe"
     }
-  ]
+  ],
+  "cmake.sourceDirectory": "/workspaces/vscode-catch2-test-adapter/test/cpp"
 }
